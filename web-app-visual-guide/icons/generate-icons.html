@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head><title>Icon Generator</title></head>
+<body>
+<h2>Icon Generator</h2>
+<p>Click buttons to download icons</p>
+<div id="canvases"></div>
+<script>
+const sizes = [16, 48, 128];
+sizes.forEach(size => {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  drawIcon(ctx, size);
+  document.getElementById('canvases').appendChild(canvas);
+
+  const btn = document.createElement('button');
+  btn.textContent = `Download icon${size}.png`;
+  btn.onclick = () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `icon${size}.png`;
+    a.click();
+  };
+  document.getElementById('canvases').appendChild(btn);
+  document.getElementById('canvases').appendChild(document.createElement('br'));
+});
+
+function drawIcon(ctx, size) {
+  const s = size;
+  const cx = s / 2;
+  const cy = s / 2;
+  const r = s * 0.45;
+
+  // Background circle - Google Blue
+  ctx.fillStyle = '#4285F4';
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // White border circle
+  ctx.strokeStyle = '#FFFFFF';
+  ctx.lineWidth = s * 0.06;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r - s * 0.03, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // "?" mark in white
+  ctx.fillStyle = '#FFFFFF';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = `bold ${s * 0.45}px Arial`;
+  ctx.fillText('?', cx, cy + s * 0.02);
+}
+</script>
+</body>
+</html>

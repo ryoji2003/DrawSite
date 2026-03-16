@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Web App Visual Guide</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="header-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="11" stroke="#4285F4" stroke-width="2"/>
+          <path d="M8 9.5C8 7.567 9.567 6 11.5 6C13.433 6 15 7.567 15 9.5C15 11.1 13.967 12.45 12.5 12.878V14H11V11.5H11.5C12.605 11.5 13.5 10.605 13.5 9.5C13.5 8.395 12.605 7.5 11.5 7.5C10.395 7.5 9.5 8.395 9.5 9.5H8Z" fill="#4285F4"/>
+          <circle cx="11.75" cy="16.5" r="1" fill="#4285F4"/>
+        </svg>
+      </div>
+      <h1 class="header-title">Visual Guide</h1>
+    </header>
+
+    <main class="main">
+      <div class="input-section">
+        <label class="input-label" for="question">何を知りたいですか？</label>
+        <textarea
+          id="question"
+          class="input-textarea"
+          placeholder="例: 新しいプロジェクトの作成方法は？"
+          rows="3"
+        ></textarea>
+      </div>
+
+      <button id="start-btn" class="btn btn-primary">
+        <svg class="btn-icon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M8 5v14l11-7z"/>
+        </svg>
+        ガイド開始
+      </button>
+
+      <div id="loading" class="loading hidden">
+        <div class="spinner"></div>
+        <span class="loading-text">AIが画面を解析中...</span>
+      </div>
+
+      <div id="error-message" class="error-message hidden"></div>
+
+      <div id="success-message" class="success-message hidden">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+        </svg>
+        ガイドを表示しました
+      </div>
+    </main>
+
+    <footer class="footer">
+      <button id="settings-toggle" class="settings-toggle">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+        </svg>
+        API設定
+      </button>
+    </footer>
+
+    <div id="settings-panel" class="settings-panel hidden">
+      <div class="settings-content">
+        <label class="input-label" for="api-key">Gemini API Key</label>
+        <input
+          type="password"
+          id="api-key"
+          class="input-field"
+          placeholder="AIza..."
+        />
+        <div class="settings-actions">
+          <button id="save-settings" class="btn btn-secondary">保存</button>
+          <a
+            href="https://aistudio.google.com/app/apikey"
+            target="_blank"
+            class="settings-link"
+          >APIキーを取得</a>
+        </div>
+        <div id="settings-message" class="settings-message hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
