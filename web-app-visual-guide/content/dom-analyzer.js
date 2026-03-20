@@ -28,48 +28,91 @@ function analyzeDom() {
     }
   }
 
-  const results = [];
+  const visibleElements = [];
   for (const element of allElements) {
-    if (results.length >= 200) break;
-
+    if (visibleElements.length >= 200) break;
     if (!isElementVisible(element)) continue;
-
-    const rect = element.getBoundingClientRect();
-    results.push({
-      tag: element.tagName.toLowerCase(),
-      id: element.id || undefined,
-      classes: [...element.classList].slice(0, 5),
-      text: element.textContent.trim().substring(0, 100),
-      ariaLabel: element.getAttribute('aria-label') || undefined,
-      role: element.getAttribute('role') || undefined,
-      type: element.getAttribute('type') || undefined,
-      href: element.getAttribute('href')?.substring(0, 100) || undefined,
-      selector: generateUniqueSelector(element),
-      rect: {
-        top: Math.round(rect.top),
-        left: Math.round(rect.left),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height)
-      },
-      isVisible: true,
-      placeholder: element.getAttribute('placeholder') || undefined
-    });
+    visibleElements.push(element);
   }
 
   return {
     url: location.href,
     title: document.title,
-    elements: results,
-    viewport: {
-      width: window.innerWidth,
-      height: window.innerHeight
+    viewport: { width: window.innerWidth, height: window.innerHeight },
+    regions: groupByRegion(visibleElements)
+  };
+}
+
+function groupByRegion(domElements) {
+  const landmarkSelectors = [
+    'nav',
+    'header',
+    'main',
+    'aside',
+    'footer',
+    '[role="navigation"]',
+    '[role="main"]',
+    '[role="banner"]',
+    '[role="complementary"]',
+    '[role="contentinfo"]'
+  ];
+
+  const landmarks = [];
+  for (const sel of landmarkSelectors) {
+    try {
+      document.querySelectorAll(sel).forEach(el => {
+        if (!landmarks.find(l => l.el === el)) {
+          const label = el.getAttribute('aria-label') || el.getAttribute('id') || '';
+          const tagName = el.tagName.toLowerCase();
+          const name = label ? `${tagName} (${label})` : tagName;
+          landmarks.push({ el, name });
+        }
+      });
+    } catch { /* ignore */ }
+  }
+
+  if (landmarks.length === 0) {
+    return [{ area: 'ページ全体', elements: domElements.map(slimElement) }];
+  }
+
+  const groups = new Map();
+  landmarks.forEach(l => groups.set(l.name, []));
+  const other = [];
+
+  for (const el of domElements) {
+    let found = false;
+    for (const landmark of landmarks) {
+      if (landmark.el.contains(el)) {
+        groups.get(landmark.name).push(slimElement(el));
+        found = true;
+        break;
+      }
     }
+    if (!found) other.push(slimElement(el));
+  }
+
+  const regions = [];
+  for (const [area, elements] of groups.entries()) {
+    if (elements.length > 0) regions.push({ area, elements });
+  }
+  if (other.length > 0) regions.push({ area: 'その他', elements: other });
+
+  return regions;
+}
+
+function slimElement(element) {
+  return {
+    tag: element.tagName.toLowerCase(),
+    text: element.textContent.trim().substring(0, 50) || undefined,
+    ariaLabel: element.getAttribute('aria-label') || undefined,
+    role: element.getAttribute('role') || undefined,
+    selector: generateUniqueSelector(element),
+    placeholder: element.getAttribute('placeholder') || undefined
   };
 }
 
 function isElementVisible(element) {
   if (element.offsetParent === null && element.tagName !== 'BODY') {
-    // Fixed/sticky elements may have null offsetParent, check differently
     const style = getComputedStyle(element);
     if (style.position !== 'fixed' && style.position !== 'sticky') {
       return false;
@@ -111,7 +154,6 @@ function generateUniqueSelector(element) {
     }
   }
 
-  // Build path from ancestors
   return buildPathSelector(element);
 }
 
@@ -128,7 +170,6 @@ function buildPathSelector(element) {
       break;
     }
 
-    // Add nth-of-type to disambiguate siblings
     const siblings = current.parentElement
       ? [...current.parentElement.children].filter(el => el.tagName === current.tagName)
       : [];
@@ -143,11 +184,9 @@ function buildPathSelector(element) {
 
   const selector = parts.join(' > ');
 
-  // Validate uniqueness
   try {
     if (document.querySelectorAll(selector).length === 1) return selector;
   } catch { /* ignore */ }
 
-  // Fallback: use a best-effort selector
   return selector || element.tagName.toLowerCase();
 }
