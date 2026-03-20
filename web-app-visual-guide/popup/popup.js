@@ -4,44 +4,20 @@
   const loadingEl = document.getElementById('loading');
   const errorEl = document.getElementById('error-message');
   const successEl = document.getElementById('success-message');
-  const settingsToggle = document.getElementById('settings-toggle');
-  const settingsPanel = document.getElementById('settings-panel');
-  const apiKeyEl = document.getElementById('api-key');
-  const saveSettingsBtn = document.getElementById('save-settings');
-  const settingsMsg = document.getElementById('settings-message');
+  
+  // 新しく追加した歯車ボタンを取得
+  const openSettingsBtn = document.getElementById('open-settings-btn');
 
-  // 保存済みAPIキーを読み込む
-  chrome.storage.local.get(['geminiApiKey'], (result) => {
-    if (result.geminiApiKey) {
-      apiKeyEl.value = result.geminiApiKey;
+  // 設定（歯車）ボタンをクリックしたときの処理（オプションページを開く）
+  openSettingsBtn.addEventListener('click', () => {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      window.open(chrome.runtime.getURL('options.html'));
     }
   });
 
-  // 設定パネルの開閉
-  settingsToggle.addEventListener('click', () => {
-    settingsPanel.classList.toggle('hidden');
-  });
-
-  // APIキーの保存
-  saveSettingsBtn.addEventListener('click', () => {
-    const key = apiKeyEl.value.trim();
-    if (!key) {
-      showSettingsMessage('APIキーを入力してください', 'error');
-      return;
-    }
-    chrome.storage.local.set({ geminiApiKey: key }, () => {
-      showSettingsMessage('保存しました', 'success');
-      setTimeout(() => settingsMsg.classList.add('hidden'), 2000);
-    });
-  });
-
-  function showSettingsMessage(text, type) {
-    settingsMsg.textContent = text;
-    settingsMsg.className = `settings-message ${type}`;
-    settingsMsg.classList.remove('hidden');
-  }
-
-  // ガイド開始
+  // Main action (ガイド開始ボタン)
   startBtn.addEventListener('click', async () => {
     const question = questionEl.value.trim();
     if (!question) {
@@ -49,10 +25,19 @@
       return;
     }
 
+    // ストレージからAPIキーを取得してチェック
     const { geminiApiKey } = await chrome.storage.local.get(['geminiApiKey']);
     if (!geminiApiKey) {
-      showError('Gemini APIキーが設定されていません。下部の「API設定」から設定してください。');
-      settingsPanel.classList.remove('hidden');
+      showError('APIキーが未設定です。右上の歯車アイコンから設定してください。');
+      
+      // UX向上：エラーメッセージを見せた後、2秒後に自動で設定画面を開いてあげる
+      setTimeout(() => {
+        if (chrome.runtime.openOptionsPage) {
+          chrome.runtime.openOptionsPage();
+        } else {
+          window.open(chrome.runtime.getURL('options.html'));
+        }
+      }, 2000);
       return;
     }
 
@@ -60,22 +45,31 @@
     clearMessages();
 
     try {
-      // アクティブタブを取得
+      // Get active tab
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab) throw new Error('アクティブなタブが見つかりません');
 
+      // Check if the tab URL allows content script injection
       const url = tab.url || '';
       if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') ||
           url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('data:')) {
         throw new Error('このページでは使用できません。通常のWebページ（http/https）で使用してください。');
       }
 
-      // Content ScriptからDOM情報を取得
+      // Capture screenshot via background
+      const screenshotResponse = await chrome.runtime.sendMessage({
+        action: 'captureScreen',
+        tabId: tab.id
+      });
+      if (screenshotResponse.error) throw new Error(screenshotResponse.error);
+      const screenshotBase64 = screenshotResponse.data;
+
+      // Get DOM info from content script
       let domResponse;
       try {
         domResponse = await chrome.tabs.sendMessage(tab.id, { action: 'analyze' });
       } catch {
-        // Content Scriptがまだ注入されていない場合は注入する
+        // Content script not injected yet (e.g. tab was open before extension install)
         try {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
@@ -88,32 +82,28 @@
       }
       if (domResponse.error) throw new Error(domResponse.error);
 
-      // Service WorkerにセッションをstartSession（AI呼び出しも含む）
+      // Call Gemini via background
       const geminiResponse = await chrome.runtime.sendMessage({
-        action: 'startSession',
+        action: 'callGemini',
         data: {
-          apiKey: geminiApiKey,
+          apiKey: geminiApiKey, // ここで取得したAPIキーを使用する
           userQuestion: question,
+          screenshotBase64,
           domInfo: domResponse.data
         }
       });
       if (geminiResponse.error) throw new Error(geminiResponse.error);
 
-      // Content Scriptに結果を表示
-      if (geminiResponse.data.done) {
-        await chrome.tabs.sendMessage(tab.id, {
-          action: 'showCompleted',
-          summary: geminiResponse.data.summary
-        });
-      } else {
-        await chrome.tabs.sendMessage(tab.id, {
-          action: 'showSingleStep',
-          step: geminiResponse.data.step,
-          stepNumber: geminiResponse.data.stepNumber
-        });
-      }
+      // Send guide data to content script
+      const showResponse = await chrome.tabs.sendMessage(tab.id, {
+        action: 'showGuide',
+        steps: geminiResponse.data.steps
+      });
+      if (showResponse && showResponse.error) throw new Error(showResponse.error);
 
       showSuccess();
+      // Close popup after short delay
+      setTimeout(() => window.close(), 1000);
 
     } catch (err) {
       showError(err.message || '予期しないエラーが発生しました');
