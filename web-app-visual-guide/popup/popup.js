@@ -56,14 +56,6 @@
         throw new Error('このページでは使用できません。通常のWebページ（http/https）で使用してください。');
       }
 
-      // Capture screenshot via background
-      const screenshotResponse = await chrome.runtime.sendMessage({
-        action: 'captureScreen',
-        tabId: tab.id
-      });
-      if (screenshotResponse.error) throw new Error(screenshotResponse.error);
-      const screenshotBase64 = screenshotResponse.data;
-
       // Get DOM info from content script
       let domResponse;
       try {
@@ -82,23 +74,26 @@
       }
       if (domResponse.error) throw new Error(domResponse.error);
 
-      // Call Gemini via background
-      const geminiResponse = await chrome.runtime.sendMessage({
-        action: 'callGemini',
+      // Start session via background
+      const sessionResponse = await chrome.runtime.sendMessage({
+        action: 'startSession',
         data: {
-          apiKey: geminiApiKey, // ここで取得したAPIキーを使用する
+          apiKey: geminiApiKey,
           userQuestion: question,
-          screenshotBase64,
           domInfo: domResponse.data
         }
       });
-      if (geminiResponse.error) throw new Error(geminiResponse.error);
+      if (!sessionResponse) throw new Error('バックグラウンドからの応答がありません');
+      if (sessionResponse.error) throw new Error(sessionResponse.error);
 
-      // Send guide data to content script
-      const showResponse = await chrome.tabs.sendMessage(tab.id, {
-        action: 'showGuide',
-        steps: geminiResponse.data.steps
-      });
+      // Send first step to content script
+      const { done, step, summary, stepNumber } = sessionResponse.data;
+      let showResponse;
+      if (done) {
+        showResponse = await chrome.tabs.sendMessage(tab.id, { action: 'showCompleted', summary });
+      } else {
+        showResponse = await chrome.tabs.sendMessage(tab.id, { action: 'showSingleStep', step, stepNumber });
+      }
       if (showResponse && showResponse.error) throw new Error(showResponse.error);
 
       showSuccess();
