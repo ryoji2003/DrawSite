@@ -23,7 +23,7 @@ async function callGemini(apiKey, userQuestion, screenshotBase64, domInfo) {
 }
 
 async function callGeminiOnce(apiKey, userQuestion, screenshotBase64, domInfo) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
 
   const domInfoStr = JSON.stringify(domInfo, null, 0);
   // Limit DOM info size to avoid exceeding token limits
