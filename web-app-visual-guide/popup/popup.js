@@ -10,19 +10,19 @@
   const saveSettingsBtn = document.getElementById('save-settings');
   const settingsMsg = document.getElementById('settings-message');
 
-  // Load saved API key
+  // 保存済みAPIキーを読み込む
   chrome.storage.local.get(['geminiApiKey'], (result) => {
     if (result.geminiApiKey) {
       apiKeyEl.value = result.geminiApiKey;
     }
   });
 
-  // Settings toggle
+  // 設定パネルの開閉
   settingsToggle.addEventListener('click', () => {
     settingsPanel.classList.toggle('hidden');
   });
 
-  // Save settings
+  // APIキーの保存
   saveSettingsBtn.addEventListener('click', () => {
     const key = apiKeyEl.value.trim();
     if (!key) {
@@ -41,7 +41,7 @@
     settingsMsg.classList.remove('hidden');
   }
 
-  // Main action
+  // ガイド開始
   startBtn.addEventListener('click', async () => {
     const question = questionEl.value.trim();
     if (!question) {
@@ -60,31 +60,22 @@
     clearMessages();
 
     try {
-      // Get active tab
+      // アクティブタブを取得
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab) throw new Error('アクティブなタブが見つかりません');
 
-      // Check if the tab URL allows content script injection
       const url = tab.url || '';
       if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') ||
           url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('data:')) {
         throw new Error('このページでは使用できません。通常のWebページ（http/https）で使用してください。');
       }
 
-      // Capture screenshot via background
-      const screenshotResponse = await chrome.runtime.sendMessage({
-        action: 'captureScreen',
-        tabId: tab.id
-      });
-      if (screenshotResponse.error) throw new Error(screenshotResponse.error);
-      const screenshotBase64 = screenshotResponse.data;
-
-      // Get DOM info from content script
+      // Content ScriptからDOM情報を取得
       let domResponse;
       try {
         domResponse = await chrome.tabs.sendMessage(tab.id, { action: 'analyze' });
       } catch {
-        // Content script not injected yet (e.g. tab was open before extension install)
+        // Content Scriptがまだ注入されていない場合は注入する
         try {
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
@@ -97,28 +88,32 @@
       }
       if (domResponse.error) throw new Error(domResponse.error);
 
-      // Call Gemini via background
+      // Service WorkerにセッションをstartSession（AI呼び出しも含む）
       const geminiResponse = await chrome.runtime.sendMessage({
-        action: 'callGemini',
+        action: 'startSession',
         data: {
           apiKey: geminiApiKey,
           userQuestion: question,
-          screenshotBase64,
           domInfo: domResponse.data
         }
       });
       if (geminiResponse.error) throw new Error(geminiResponse.error);
 
-      // Send guide data to content script
-      const showResponse = await chrome.tabs.sendMessage(tab.id, {
-        action: 'showGuide',
-        steps: geminiResponse.data.steps
-      });
-      if (showResponse && showResponse.error) throw new Error(showResponse.error);
+      // Content Scriptに結果を表示
+      if (geminiResponse.data.done) {
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'showCompleted',
+          summary: geminiResponse.data.summary
+        });
+      } else {
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'showSingleStep',
+          step: geminiResponse.data.step,
+          stepNumber: geminiResponse.data.stepNumber
+        });
+      }
 
       showSuccess();
-      // Close popup after short delay
-      setTimeout(() => window.close(), 1000);
 
     } catch (err) {
       showError(err.message || '予期しないエラーが発生しました');

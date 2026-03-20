@@ -4,70 +4,161 @@
  */
 class VisualGuideOverlay {
   constructor() {
-    this.steps = [];
-    this.currentStep = 0;
+    this.currentStep = null;
+    this.currentStepNumber = 0;
     this.host = null;
     this.shadow = null;
     this.scrollHandler = null;
     this.resizeObserver = null;
   }
 
-  show(steps) {
-    this.destroy(); // clean up any existing overlay
-    this.steps = steps;
-    this.currentStep = 0;
+  showSingle(step, stepNumber) {
+    this.destroy();
+    this.currentStep = step;
+    this.currentStepNumber = stepNumber;
     this._createHost();
-    this.showStep(0);
-  }
 
-  _createHost() {
-    this.host = document.createElement('div');
-    this.host.id = 'visual-guide-host';
-    this.host.style.cssText = 'all: initial; position: fixed; top: 0; left: 0; z-index: 2147483647; pointer-events: none;';
-    this.shadow = this.host.attachShadow({ mode: 'closed' });
-
-    // Inject styles into shadow
-    const style = document.createElement('style');
-    style.textContent = this._getStyles();
-    this.shadow.appendChild(style);
-
-    document.documentElement.appendChild(this.host);
-  }
-
-  showStep(stepIndex) {
-    if (stepIndex < 0 || stepIndex >= this.steps.length) return;
-    this.currentStep = stepIndex;
-
-    const step = this.steps[stepIndex];
     const targetEl = this._findElement(step);
-
-    // Scroll element into view
     if (targetEl) {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      // Wait for scroll to settle
       setTimeout(() => this._renderStep(step, targetEl), 300);
     } else {
       this._renderStep(step, null);
     }
 
-    // Attach scroll/resize listeners
     this._attachListeners();
   }
 
-  nextStep() {
-    if (this.currentStep < this.steps.length - 1) {
-      this.showStep(this.currentStep + 1);
-    }
+  showLoading() {
+    this._ensureHost();
+    this._clearRoot();
+
+    const root = document.createElement('div');
+    root.className = 'guide-root';
+    root.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none;';
+
+    const panel = document.createElement('div');
+    panel.className = 'guide-panel loading-panel';
+    panel.style.pointerEvents = 'auto';
+    panel.innerHTML = `
+      <div class="panel-header">
+        <span class="step-badge">ガイド実行中</span>
+        <button class="close-btn" title="閉じる">✕</button>
+      </div>
+      <div class="panel-body loading-body">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">次の操作を確認中...</p>
+      </div>
+    `;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    panel.style.cssText = `
+      position: absolute;
+      top: ${vh / 2 - 70}px;
+      left: ${vw / 2 - 140}px;
+      width: 280px;
+      z-index: 2147483647;
+    `;
+
+    panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
+    root.appendChild(panel);
+    this.shadow.appendChild(root);
   }
 
-  prevStep() {
-    if (this.currentStep > 0) {
-      this.showStep(this.currentStep - 1);
-    }
+  showCompleted(summary) {
+    this._ensureHost();
+    this._clearRoot();
+
+    const root = document.createElement('div');
+    root.className = 'guide-root';
+    root.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none;';
+
+    const panel = document.createElement('div');
+    panel.className = 'guide-panel';
+    panel.style.pointerEvents = 'auto';
+    panel.innerHTML = `
+      <div class="panel-header completed-header">
+        <span class="step-badge">完了</span>
+        <button class="close-btn" title="閉じる">✕</button>
+      </div>
+      <div class="panel-body">
+        <p class="completed-icon">✓</p>
+        <p class="panel-description">${this._escape(summary)}</p>
+      </div>
+      <div class="panel-footer">
+        <button class="nav-btn close-guide-btn">閉じる</button>
+      </div>
+    `;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    panel.style.cssText = `
+      position: absolute;
+      top: ${vh / 2 - 80}px;
+      left: ${vw / 2 - 140}px;
+      width: 280px;
+      z-index: 2147483647;
+    `;
+
+    panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
+    panel.querySelector('.close-guide-btn').addEventListener('click', () => this.destroy());
+    root.appendChild(panel);
+    this.shadow.appendChild(root);
+  }
+
+  showError(message) {
+    this._ensureHost();
+    this._clearRoot();
+
+    const root = document.createElement('div');
+    root.className = 'guide-root';
+    root.style.cssText = 'position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none;';
+
+    const panel = document.createElement('div');
+    panel.className = 'guide-panel';
+    panel.style.pointerEvents = 'auto';
+    panel.innerHTML = `
+      <div class="panel-header error-header">
+        <span class="step-badge">エラー</span>
+        <button class="close-btn" title="閉じる">✕</button>
+      </div>
+      <div class="panel-body">
+        <p class="panel-description error-text">${this._escape(message)}</p>
+      </div>
+      <div class="panel-footer">
+        <button class="nav-btn retry-btn">再試行</button>
+        <button class="nav-btn close-guide-btn">閉じる</button>
+      </div>
+    `;
+
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    panel.style.cssText = `
+      position: absolute;
+      top: ${vh / 2 - 80}px;
+      left: ${vw / 2 - 140}px;
+      width: 280px;
+      z-index: 2147483647;
+    `;
+
+    panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
+    panel.querySelector('.close-guide-btn').addEventListener('click', () => this.destroy());
+    panel.querySelector('.retry-btn').addEventListener('click', () => {
+      if (this.currentStep) {
+        window.dispatchEvent(new CustomEvent('guideNextStep', {
+          detail: { currentStep: this.currentStep }
+        }));
+      }
+    });
+    root.appendChild(panel);
+    this.shadow.appendChild(root);
   }
 
   recalculatePositions() {
-    this.showStep(this.currentStep);
+    if (this.currentStep) {
+      this._renderStep(this.currentStep, this._findElement(this.currentStep));
+    }
   }
 
   destroy() {
@@ -77,43 +168,35 @@ class VisualGuideOverlay {
     }
     this.host = null;
     this.shadow = null;
-    this.steps = [];
+    this.currentStep = null;
   }
 
-  _findElement(step) {
-    // Try CSS selector
-    if (step.selector) {
-      try {
-        const el = document.querySelector(step.selector);
-        if (el && this._isVisible(el)) return el;
-      } catch { /* ignore */ }
+  _ensureHost() {
+    if (!this.host) {
+      this._createHost();
     }
-
-    // Try fallback: text content match
-    if (step.fallback?.text) {
-      const text = step.fallback.text.toLowerCase();
-      const candidates = document.querySelectorAll('button, a, [role="button"], input, [role="tab"]');
-      for (const el of candidates) {
-        if (el.textContent.trim().toLowerCase().includes(text) && this._isVisible(el)) {
-          return el;
-        }
-      }
-    }
-
-    return null;
   }
 
-  _isVisible(el) {
-    const style = getComputedStyle(el);
-    if (style.display === 'none' || style.visibility === 'hidden') return false;
-    const rect = el.getBoundingClientRect();
-    return rect.width > 0 && rect.height > 0;
+  _createHost() {
+    this.host = document.createElement('div');
+    this.host.id = 'visual-guide-host';
+    this.host.style.cssText = 'all: initial; position: fixed; top: 0; left: 0; z-index: 2147483647; pointer-events: none;';
+    this.shadow = this.host.attachShadow({ mode: 'closed' });
+
+    const style = document.createElement('style');
+    style.textContent = this._getStyles();
+    this.shadow.appendChild(style);
+
+    document.documentElement.appendChild(this.host);
+  }
+
+  _clearRoot() {
+    const existing = this.shadow.querySelector('.guide-root');
+    if (existing) existing.remove();
   }
 
   _renderStep(step, targetEl) {
-    // Clear previous render
-    const existing = this.shadow.querySelector('.guide-root');
-    if (existing) existing.remove();
+    this._clearRoot();
 
     const root = document.createElement('div');
     root.className = 'guide-root';
@@ -129,11 +212,9 @@ class VisualGuideOverlay {
       rect = { top, left, width: 100, height: 40 };
     }
 
-    // SVG overlay
     const svg = this._createSVG(rect);
     root.appendChild(svg);
 
-    // Info panel
     const panel = this._createPanel(step, rect, targetEl);
     root.appendChild(panel);
 
@@ -150,7 +231,6 @@ class VisualGuideOverlay {
     svg.style.cssText = 'position: absolute; top: 0; left: 0; pointer-events: none;';
 
     if (!rect) {
-      // No target: just dim the whole screen
       const dimRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
       dimRect.setAttribute('x', 0);
       dimRect.setAttribute('y', 0);
@@ -167,7 +247,6 @@ class VisualGuideOverlay {
     const rw = rect.width + pad * 2;
     const rh = rect.height + pad * 2;
 
-    // Spotlight mask
     const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
     const maskEl = document.createElementNS('http://www.w3.org/2000/svg', 'mask');
     maskEl.setAttribute('id', 'spotlight-mask');
@@ -192,7 +271,6 @@ class VisualGuideOverlay {
     defs.appendChild(maskEl);
     svg.appendChild(defs);
 
-    // Dim background
     const dimRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     dimRect.setAttribute('x', 0);
     dimRect.setAttribute('y', 0);
@@ -202,7 +280,6 @@ class VisualGuideOverlay {
     dimRect.setAttribute('mask', 'url(#spotlight-mask)');
     svg.appendChild(dimRect);
 
-    // Highlight border
     const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
     highlight.setAttribute('x', rx);
     highlight.setAttribute('y', ry);
@@ -212,10 +289,9 @@ class VisualGuideOverlay {
     highlight.setAttribute('fill', 'none');
     highlight.setAttribute('stroke', '#FF4444');
     highlight.setAttribute('stroke-width', '3');
-    highlight.className = 'pulse-rect';
+    highlight.setAttribute('class', 'pulse-rect');    
     svg.appendChild(highlight);
 
-    // Step number badge
     const badgeR = 14;
     const bx = rx + badgeR;
     const by = ry - badgeR;
@@ -229,7 +305,6 @@ class VisualGuideOverlay {
     circle.setAttribute('fill', '#FF4444');
     svg.appendChild(circle);
 
-    const stepNum = this.currentStep + 1;
     const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     text.setAttribute('x', badgeClamp_x);
     text.setAttribute('y', badgeClamp_y + 1);
@@ -239,7 +314,7 @@ class VisualGuideOverlay {
     text.setAttribute('font-size', '12');
     text.setAttribute('font-weight', 'bold');
     text.setAttribute('font-family', 'Arial, sans-serif');
-    text.textContent = stepNum;
+    text.textContent = this.currentStepNumber;
     svg.appendChild(text);
 
     return svg;
@@ -254,7 +329,7 @@ class VisualGuideOverlay {
 
     panel.innerHTML = `
       <div class="panel-header">
-        <span class="step-badge">ステップ ${this.currentStep + 1} / ${this.steps.length}</span>
+        <span class="step-badge">ステップ ${this.currentStepNumber}</span>
         <button class="close-btn" title="閉じる">✕</button>
       </div>
       <div class="panel-body">
@@ -262,27 +337,25 @@ class VisualGuideOverlay {
         <p class="panel-description">${this._escape(step.description)}</p>
       </div>
       <div class="panel-footer">
-        <button class="nav-btn prev-btn" ${this.currentStep === 0 ? 'disabled' : ''}>← 前へ</button>
-        <button class="nav-btn next-btn" ${this.currentStep === this.steps.length - 1 ? 'disabled' : ''}>次へ →</button>
+        <button class="nav-btn next-btn">操作を実行して次へ →</button>
       </div>
     `;
 
-    // Position panel
     this._positionPanel(panel, rect);
 
-    // Event listeners
     panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
-    const prevBtn = panel.querySelector('.prev-btn');
-    const nextBtn = panel.querySelector('.next-btn');
-    if (prevBtn) prevBtn.addEventListener('click', () => this.prevStep());
-    if (nextBtn) nextBtn.addEventListener('click', () => this.nextStep());
+    panel.querySelector('.next-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('guideNextStep', {
+        detail: { currentStep: step }
+      }));
+    });
 
     return panel;
   }
 
   _positionPanel(panel, rect) {
     const panelW = 280;
-    const panelH = 140;
+    const panelH = 150;
     const margin = 12;
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -293,18 +366,14 @@ class VisualGuideOverlay {
       top = vh / 2 - panelH / 2;
       left = vw / 2 - panelW / 2;
     } else {
-      // Prefer below the element
       top = rect.top + rect.height + margin + window.scrollY;
       left = rect.left + rect.width / 2 - panelW / 2;
 
-      // If below goes off screen, put above
       if (rect.top + rect.height + margin + panelH > vh) {
         top = rect.top - panelH - margin + window.scrollY;
       }
 
-      // Keep horizontally within viewport
       left = Math.max(margin, Math.min(left, vw - panelW - margin));
-      // If above goes off screen, center vertically
       if (top < 0) {
         top = margin;
       }
@@ -319,16 +388,65 @@ class VisualGuideOverlay {
     `;
   }
 
+  // Phase 3: 要素検索フォールバックの強化（3段階）
+  _findElement(step) {
+    // 1. CSSセレクタで検索
+    if (step.selector) {
+      try {
+        const el = document.querySelector(step.selector);
+        if (el && this._isVisible(el)) return el;
+      } catch { /* ignore */ }
+    }
+
+    // 2. aria-labelで検索
+    if (step.fallback?.ariaLabel) {
+      try {
+        const el = document.querySelector(`[aria-label="${CSS.escape(step.fallback.ariaLabel)}"]`);
+        if (el && this._isVisible(el)) return el;
+      } catch { /* ignore */ }
+    }
+
+    // 3. テキスト内容で検索（完全一致 → 部分一致）
+    if (step.fallback?.text) {
+      const text = step.fallback.text.toLowerCase();
+      const candidates = document.querySelectorAll(
+        'button, a, [role="button"], [role="link"], [role="menuitem"], [role="tab"], ' +
+        'input, select, textarea, [onclick], [tabindex], .btn, [data-action]'
+      );
+      let partial = null;
+      for (const el of candidates) {
+        if (!this._isVisible(el)) continue;
+        const elText = el.textContent.trim().toLowerCase();
+        if (elText === text) return el;
+        if (!partial && elText.includes(text)) partial = el;
+      }
+      if (partial) return partial;
+    }
+
+    return null;
+  }
+
+  _isVisible(el) {
+    const style = getComputedStyle(el);
+    if (style.display === 'none' || style.visibility === 'hidden') return false;
+    const rect = el.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
+  }
+
   _attachListeners() {
     this._detachListeners();
 
     this.scrollHandler = () => {
-      requestAnimationFrame(() => this._renderStep(this.steps[this.currentStep], this._findElement(this.steps[this.currentStep])));
+      if (this.currentStep) {
+        requestAnimationFrame(() => this._renderStep(this.currentStep, this._findElement(this.currentStep)));
+      }
     };
     window.addEventListener('scroll', this.scrollHandler, { passive: true });
 
     this.resizeObserver = new ResizeObserver(() => {
-      requestAnimationFrame(() => this._renderStep(this.steps[this.currentStep], this._findElement(this.steps[this.currentStep])));
+      if (this.currentStep) {
+        requestAnimationFrame(() => this._renderStep(this.currentStep, this._findElement(this.currentStep)));
+      }
     });
     this.resizeObserver.observe(document.body);
   }
@@ -360,6 +478,10 @@ class VisualGuideOverlay {
         100% { opacity: 1; }
       }
 
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
       .pulse-rect {
         animation: pulse-ring 1.5s ease-in-out infinite;
       }
@@ -381,6 +503,14 @@ class VisualGuideOverlay {
         padding: 10px 14px;
         background: #4285F4;
         color: white;
+      }
+
+      .completed-header {
+        background: #34A853;
+      }
+
+      .error-header {
+        background: #EA4335;
       }
 
       .step-badge {
@@ -406,6 +536,29 @@ class VisualGuideOverlay {
         padding: 12px 14px;
       }
 
+      .loading-body {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 16px 14px;
+      }
+
+      .loading-spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid #DADCE0;
+        border-top-color: #4285F4;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        flex-shrink: 0;
+      }
+
+      .loading-text {
+        margin: 0;
+        color: #5F6368;
+        font-size: 13px;
+      }
+
       .fallback-notice {
         font-size: 11px;
         color: #E65100;
@@ -419,6 +572,17 @@ class VisualGuideOverlay {
         margin: 0;
         line-height: 1.5;
         color: #202124;
+      }
+
+      .error-text {
+        color: #EA4335;
+      }
+
+      .completed-icon {
+        margin: 0 0 8px;
+        font-size: 24px;
+        color: #34A853;
+        text-align: center;
       }
 
       .panel-footer {
@@ -446,9 +610,30 @@ class VisualGuideOverlay {
         border-color: #4285F4;
       }
 
-      .nav-btn:disabled {
-        color: #BDC1C6;
-        cursor: not-allowed;
+      .next-btn {
+        background: #4285F4;
+        color: white;
+        border-color: #4285F4;
+      }
+
+      .next-btn:hover {
+        background: #3367D6;
+        border-color: #3367D6;
+      }
+
+      .retry-btn {
+        background: #EA4335;
+        color: white;
+        border-color: #EA4335;
+      }
+
+      .retry-btn:hover {
+        background: #C5221F;
+        border-color: #C5221F;
+      }
+
+      .close-guide-btn {
+        color: #5F6368;
       }
     `;
   }
