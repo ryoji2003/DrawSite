@@ -51,14 +51,20 @@ body {
   padding: 16px;
 }
 
-/* Header */
+/* ---------- Header ---------- */
 .header {
   display: flex;
+  justify-content: space-between; /* 左右に要素を振り分ける */
   align-items: center;
-  gap: 10px;
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .header-title {
@@ -67,14 +73,32 @@ body {
   color: var(--text-primary);
 }
 
-/* Main */
+.settings-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.settings-btn:hover {
+  color: var(--primary);
+  background-color: var(--surface-secondary);
+}
+
+/* ---------- Main ---------- */
 .main {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-/* Input */
+/* ---------- Input ---------- */
 .input-section {
   display: flex;
   flex-direction: column;
@@ -119,7 +143,7 @@ body {
   height: 40px;
 }
 
-/* Buttons */
+/* ---------- Buttons ---------- */
 .btn {
   display: flex;
   align-items: center;
@@ -157,22 +181,11 @@ body {
   box-shadow: none;
 }
 
-.btn-secondary {
-  background: var(--surface-secondary);
-  color: var(--primary);
-  border: 1px solid var(--border);
-  padding: 8px 14px;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--primary-light);
-}
-
 .btn-icon {
   flex-shrink: 0;
 }
 
-/* Loading */
+/* ---------- Loading ---------- */
 .loading {
   display: flex;
   align-items: center;
@@ -201,7 +214,7 @@ body {
   font-size: 13px;
 }
 
-/* Messages */
+/* ---------- Messages ---------- */
 .error-message,
 .success-message {
   display: flex;
@@ -223,83 +236,7 @@ body {
   color: var(--success);
 }
 
-/* Footer */
-.footer {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.settings-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  font-size: 12px;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-
-.settings-toggle:hover {
-  background: var(--surface-secondary);
-  color: var(--text-primary);
-}
-
-/* Settings Panel */
-.settings-panel {
-  margin-top: 12px;
-  padding: 14px;
-  background: var(--surface-secondary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.settings-content {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.settings-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.settings-link {
-  font-size: 12px;
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.settings-link:hover {
-  text-decoration: underline;
-}
-
-.settings-message {
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 6px;
-}
-
-.settings-message.success {
-  background: var(--success-light);
-  color: var(--success);
-}
-
-.settings-message.error {
-  background: var(--error-light);
-  color: var(--error);
-}
-
-/* Utility */
+/* ---------- Utility ---------- */
 .hidden {
   display: none !important;
 }

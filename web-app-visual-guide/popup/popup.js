@@ -4,44 +4,20 @@
   const loadingEl = document.getElementById('loading');
   const errorEl = document.getElementById('error-message');
   const successEl = document.getElementById('success-message');
-  const settingsToggle = document.getElementById('settings-toggle');
-  const settingsPanel = document.getElementById('settings-panel');
-  const apiKeyEl = document.getElementById('api-key');
-  const saveSettingsBtn = document.getElementById('save-settings');
-  const settingsMsg = document.getElementById('settings-message');
+  
+  // 新しく追加した歯車ボタンを取得
+  const openSettingsBtn = document.getElementById('open-settings-btn');
 
-  // Load saved API key
-  chrome.storage.local.get(['geminiApiKey'], (result) => {
-    if (result.geminiApiKey) {
-      apiKeyEl.value = result.geminiApiKey;
+  // 設定（歯車）ボタンをクリックしたときの処理（オプションページを開く）
+  openSettingsBtn.addEventListener('click', () => {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      window.open(chrome.runtime.getURL('options.html'));
     }
   });
 
-  // Settings toggle
-  settingsToggle.addEventListener('click', () => {
-    settingsPanel.classList.toggle('hidden');
-  });
-
-  // Save settings
-  saveSettingsBtn.addEventListener('click', () => {
-    const key = apiKeyEl.value.trim();
-    if (!key) {
-      showSettingsMessage('APIキーを入力してください', 'error');
-      return;
-    }
-    chrome.storage.local.set({ geminiApiKey: key }, () => {
-      showSettingsMessage('保存しました', 'success');
-      setTimeout(() => settingsMsg.classList.add('hidden'), 2000);
-    });
-  });
-
-  function showSettingsMessage(text, type) {
-    settingsMsg.textContent = text;
-    settingsMsg.className = `settings-message ${type}`;
-    settingsMsg.classList.remove('hidden');
-  }
-
-  // Main action
+  // Main action (ガイド開始ボタン)
   startBtn.addEventListener('click', async () => {
     const question = questionEl.value.trim();
     if (!question) {
@@ -49,10 +25,19 @@
       return;
     }
 
+    // ストレージからAPIキーを取得してチェック
     const { geminiApiKey } = await chrome.storage.local.get(['geminiApiKey']);
     if (!geminiApiKey) {
-      showError('Gemini APIキーが設定されていません。下部の「API設定」から設定してください。');
-      settingsPanel.classList.remove('hidden');
+      showError('APIキーが未設定です。右上の歯車アイコンから設定してください。');
+      
+      // UX向上：エラーメッセージを見せた後、2秒後に自動で設定画面を開いてあげる
+      setTimeout(() => {
+        if (chrome.runtime.openOptionsPage) {
+          chrome.runtime.openOptionsPage();
+        } else {
+          window.open(chrome.runtime.getURL('options.html'));
+        }
+      }, 2000);
       return;
     }
 
@@ -101,7 +86,7 @@
       const geminiResponse = await chrome.runtime.sendMessage({
         action: 'callGemini',
         data: {
-          apiKey: geminiApiKey,
+          apiKey: geminiApiKey, // ここで取得したAPIキーを使用する
           userQuestion: question,
           screenshotBase64,
           domInfo: domResponse.data

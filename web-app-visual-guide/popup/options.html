@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API設定</title>
+  <style>
+    body { font-family: 'Google Sans', sans-serif; padding: 40px; background-color: #f8f9fa; color: #202124; }
+    .container { max-width: 600px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+    h1 { font-size: 20px; color: #202124; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+    .guide { font-size: 14px; color: #5f6368; line-height: 1.6; margin-bottom: 24px; }
+    .guide ol { padding-left: 20px; margin-top: 10px; }
+    .input-group { margin-bottom: 20px; }
+    label { display: block; font-weight: bold; margin-bottom: 8px; font-size: 14px; }
+    input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }
+    input[type="password"]:focus { border-color: #4285F4; outline: none; box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2); }
+    .btn { background: #4285F4; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; }
+    .btn:hover { background: #3367d6; }
+    #status { margin-top: 15px; color: #34A853; font-weight: bold; display: none; }
+    .warning { color: #EA4335; font-size: 12px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>APIキーの設定</h1>
+    
+    <div class="guide">
+      <p>この拡張機能を利用するには、ご自身の Google Gemini API キーが必要です。以下の手順で取得してください。</p>
+      <ol>
+        <li><a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a> にアクセスします。</li>
+        <li>「Create API key」ボタンを押して新しいキーを作成します。</li>
+        <li>生成された <code>AIza...</code> から始まるキーをコピーして、下の入力欄に貼り付けてください。</li>
+      </ol>
+      <p class="warning">※保存されたAPIキーは、あなたのブラウザ内（ローカル環境）にのみ安全に保存されます。開発者や外部に送信されることはありません。</p>
+    </div>
+
+    <div class="input-group">
+      <label for="api-key">Gemini API Key</label>
+      <input type="password" id="api-key" placeholder="AIzaSy...">
+    </div>
+
+    <button id="save-btn" class="btn">設定を保存する</button>
+    <div id="status">✅ APIキーを安全に保存しました！</div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

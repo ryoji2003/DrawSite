@@ -36,3 +36,21 @@
     "128": "icons/icon128.png"
   }
 }
+
+
+//追記
+{
+  "manifest_version": 3,
+  "name": "あなたの拡張機能の名前",
+  "version": "1.0",
+  
+  // ... (その他の既存の設定) ...
+
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"     // <-- この "storage" が含まれているか確認！(APIキー保存に必須)
+  ],
+  
+  "options_page": "options.html" // <-- これを一番下あたりに追記！
+}
