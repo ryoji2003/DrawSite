@@ -3,6 +3,7 @@
  */
 (() => {
   let currentOverlay = null;
+  let currentStep = null;
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'analyze') {
@@ -18,6 +19,7 @@
     if (message.action === 'showSingleStep') {
       try {
         const { step, stepNumber } = message;
+        currentStep = step;
         if (currentOverlay) currentOverlay.destroy();
         currentOverlay = new VisualGuideOverlay();
         currentOverlay.showSingle(step, stepNumber);
@@ -67,10 +69,12 @@
       currentOverlay = new VisualGuideOverlay();
       currentOverlay.showLoading();
 
+      await waitForDOMSettle();
+
       const domInfo = analyzeDom();
       const response = await chrome.runtime.sendMessage({
         action: 'nextStep',
-        data: { apiKey: geminiApiKey, completedStep: null, domInfo }
+        data: { apiKey: geminiApiKey, completedStep: currentStep, domInfo }
       });
 
       if (response.error) {
@@ -82,6 +86,7 @@
       if (response.data.done) {
         currentOverlay.showCompleted(response.data.summary);
       } else {
+        currentStep = response.data.step;
         currentOverlay.showSingle(response.data.step, response.data.stepNumber);
       }
 
@@ -92,9 +97,32 @@
     }
   }
 
+  function waitForDOMSettle(timeout = 2000, quietPeriod = 500) {
+    return new Promise((resolve) => {
+      let lastMutation = Date.now();
+      const observer = new MutationObserver(() => { lastMutation = Date.now(); });
+      observer.observe(document.documentElement, {
+        childList: true, subtree: true,
+        attributes: true, attributeFilter: ['style', 'class']
+      });
+      const check = setInterval(() => {
+        if (Date.now() - lastMutation > quietPeriod) {
+          clearInterval(check);
+          observer.disconnect();
+          resolve();
+        }
+      }, 100);
+      setTimeout(() => {
+        clearInterval(check);
+        observer.disconnect();
+        resolve();
+      }, timeout);
+    });
+  }
+
   // 「次へ」ボタン押下時のハンドラ（overlay.jsからカスタムイベントで通知される）
   window.addEventListener('guideNextStep', async (e) => {
-    const { currentStep } = e.detail;
+    const { currentStep: completedStepFromEvent } = e.detail;
 
     try {
       const { geminiApiKey } = await chrome.storage.local.get(['geminiApiKey']);
@@ -108,7 +136,7 @@
       const domInfo = analyzeDom();
       const response = await chrome.runtime.sendMessage({
         action: 'nextStep',
-        data: { apiKey: geminiApiKey, completedStep: currentStep, domInfo }
+        data: { apiKey: geminiApiKey, completedStep: completedStepFromEvent, domInfo }
       });
 
       if (response.error) {
@@ -119,6 +147,7 @@
       if (response.data.done) {
         if (currentOverlay) currentOverlay.showCompleted(response.data.summary);
       } else {
+        currentStep = response.data.step;
         if (currentOverlay) currentOverlay.showSingle(response.data.step, response.data.stepNumber);
       }
     } catch (err) {

@@ -127,3 +127,29 @@ chrome.webNavigation.onCompleted.addListener(async (details) => {
     } catch { /* ignore */ }
   }
 });
+
+// SPA遷移検知（history.pushState / replaceState）
+chrome.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
+  if (details.frameId !== 0) return;
+  const session = await loadSession();
+  if (!session || session.status !== 'active') return;
+
+  const notifyContent = async () => {
+    await chrome.tabs.sendMessage(details.tabId, {
+      action: 'resumeSession',
+      session: session.toJSON()
+    });
+  };
+
+  try {
+    await notifyContent();
+  } catch {
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: details.tabId },
+        files: ['content/dom-analyzer.js', 'content/overlay.js', 'content/content.js']
+      });
+      await notifyContent();
+    } catch { /* ignore */ }
+  }
+});
