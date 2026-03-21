@@ -120,6 +120,13 @@
     });
   }
 
+  // × ボタン押下時のハンドラ（guideCloseイベントでセッションを終了）
+  window.addEventListener('guideClose', () => {
+    currentStep = null;
+    currentOverlay = null;
+    chrome.runtime.sendMessage({ action: 'endSession' });
+  });
+
   // 「次へ」ボタン押下時のハンドラ（overlay.jsからカスタムイベントで通知される）
   window.addEventListener('guideNextStep', async (e) => {
     const { currentStep: completedStepFromEvent } = e.detail;

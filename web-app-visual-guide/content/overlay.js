@@ -2,7 +2,7 @@
  * VisualGuideOverlay - renders step-by-step overlay on the page
  * Uses Shadow DOM for style isolation
  */
-class VisualGuideOverlay {
+if (!window.VisualGuideOverlay) window.VisualGuideOverlay = class VisualGuideOverlay {
   constructor() {
     this.currentStep = null;
     this.currentStepNumber = 0;
@@ -59,9 +59,13 @@ class VisualGuideOverlay {
       left: ${vw / 2 - 140}px;
       width: 280px;
       z-index: 2147483647;
+      pointer-events: auto;
     `;
 
-    panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
+    panel.querySelector('.close-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('guideClose'));
+      this.destroy();
+    });
     root.appendChild(panel);
     this.shadow.appendChild(root);
   }
@@ -99,10 +103,17 @@ class VisualGuideOverlay {
       left: ${vw / 2 - 140}px;
       width: 280px;
       z-index: 2147483647;
+      pointer-events: auto;
     `;
 
-    panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
-    panel.querySelector('.close-guide-btn').addEventListener('click', () => this.destroy());
+    panel.querySelector('.close-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('guideClose'));
+      this.destroy();
+    });
+    panel.querySelector('.close-guide-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('guideClose'));
+      this.destroy();
+    });
     root.appendChild(panel);
     this.shadow.appendChild(root);
   }
@@ -140,10 +151,17 @@ class VisualGuideOverlay {
       left: ${vw / 2 - 140}px;
       width: 280px;
       z-index: 2147483647;
+      pointer-events: auto;
     `;
 
-    panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
-    panel.querySelector('.close-guide-btn').addEventListener('click', () => this.destroy());
+    panel.querySelector('.close-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('guideClose'));
+      this.destroy();
+    });
+    panel.querySelector('.close-guide-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('guideClose'));
+      this.destroy();
+    });
     panel.querySelector('.retry-btn').addEventListener('click', () => {
       if (this.currentStep) {
         window.dispatchEvent(new CustomEvent('guideNextStep', {
@@ -343,7 +361,10 @@ class VisualGuideOverlay {
 
     this._positionPanel(panel, rect);
 
-    panel.querySelector('.close-btn').addEventListener('click', () => this.destroy());
+    panel.querySelector('.close-btn').addEventListener('click', () => {
+      window.dispatchEvent(new CustomEvent('guideClose'));
+      this.destroy();
+    });
     panel.querySelector('.next-btn').addEventListener('click', () => {
       window.dispatchEvent(new CustomEvent('guideNextStep', {
         detail: { currentStep: step }
@@ -385,6 +406,7 @@ class VisualGuideOverlay {
       left: ${left}px;
       width: ${panelW}px;
       z-index: 2147483647;
+      pointer-events: auto;
     `;
   }
 
@@ -637,4 +659,4 @@ class VisualGuideOverlay {
       }
     `;
   }
-}
+};

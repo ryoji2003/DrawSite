@@ -1,49 +1,6 @@
-# エラー原因まとめ
+# Uncaught SyntaxError: Identifier 'VisualGuideOverlay' has already been declared
+コンテキスト
+https://www.google.com/search?q=uncaught+typeerror%3A+cannot+set+property+classname+of+%23%3Csvgelement%3E+which+has+only+a+getter&sca_esv=f51b41fcffe4748f&rlz=1C5CHFA_enJP1178JP1178&sxsrf=ANbL-n73L2SXLtifMQ-Cnfd5fwwGVSruKA%3A1774012442252&ei=Gki9abiAD5_q1e8PrK6ByA8&biw=1728&bih=962&udm=28&oq=&gs_lp=Egxnd3Mtd2l6LXNlcnAiACoCCAgyBxAjGCcY6gIyBxAjGCcY6gIyBxAjGCcY6gIyDRAjGPAFGCcY6gIYngYyBxAjGCcY6gIyBxAjGCcY6gIyBxAjGCcY6gIyBxAjGCcY6gIyDRAjGPAFGLQEGCcY6gIyBxAjGCcY6gIyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyFhAAGIAEGEMYtAIY5wYYigUY6gLYAQEyHBAuGIAEGNEDGEMYtAIY5wYYxwEYigUY6gLYAQFI5d0BUIAKWK4ncAl4AZABAJgBf6AB8gWqAQMzLjS4AQHIAQD4AQGYAhCgAtIGqAIUwgIHECMYsAMYJ8ICChAAGLADGNYEGEfCAgoQIxiABBgnGIoFwgIQEC4YgAQY0QMYQxjHARiKBcICChAAGIAEGEMYigXCAg0QABiABBiRAhiKBRgKwgIFEAAYgATCAgsQLhiABBjRAxjHAcICCxAAGIAEGJECGIoFmAMJ8QXmswaCyg1wgIgGAZAGCroGBggBEAEYAZIHBDEwLjagB7JQsgcDMS42uAeXBsIHCDAuMy4xMi4xyAdLgAgA&sclient=gws-wiz-serp
+スタック トレース
 
-## エラー1: Service worker registration failed. Status code: 15
-
-### 概要
-Service Workerの登録に失敗している。
-
-### 原因
-Chrome拡張機能のService Worker登録時にステータスコード15が返されており、これはService Workerファイルが見つからない場合に発生する。
-
-### 該当箇所
-`manifest.json`
-```json
-"background": {
-  "service_worker": "background/service-worker.js"
-}
-```
-
-### 対処法
-- `background/service-worker.js` ファイルが指定パスに存在するか確認する
-- ファイルパスのスペルミスがないか確認する
-
----
-
-## エラー2: Uncaught TypeError: Cannot read properties of undefined (reading 'onCompleted')
-
-### 概要
-`chrome.webNavigation` が `undefined` になっており、`.onCompleted` プロパティにアクセスできない。
-
-### 原因
-`manifest.json` の `permissions` に `"webNavigation"` が含まれていないため、`chrome.webNavigation` APIが利用できない状態になっている。
-
-### 該当箇所
-`background/service-worker.js:105`
-```javascript
-chrome.webNavigation.onCompleted.addListener(async (details) => { ... });
-```
-
-現在の `manifest.json` の permissions:
-```json
-"permissions": ["activeTab", "scripting", "storage"]
-```
-
-### 対処法
-`manifest.json` の `permissions` に `"webNavigation"` を追加する。
-
-```json
-"permissions": ["activeTab", "scripting", "storage", "webNavigation"]
-```
+# "×"を教えても反応がありません。

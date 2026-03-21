@@ -26,6 +26,16 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handleEndSession(sendResponse);
     return true;
   }
+
+  if (message.action === 'suggestURL') {
+    handleSuggestURL(message.data, sendResponse);
+    return true;
+  }
+
+  if (message.action === 'savePendingSession') {
+    handleSavePendingSession(message.data, sendResponse);
+    return true;
+  }
 });
 
 async function handleCaptureScreen(sendResponse) {
@@ -91,6 +101,25 @@ async function handleEndSession(sendResponse) {
   }
 }
 
+async function handleSuggestURL(data, sendResponse) {
+  try {
+    const { apiKey, question } = data;
+    const url = await callGeminiSuggestURL(apiKey, question);
+    sendResponse({ data: { url } });
+  } catch (err) {
+    sendResponse({ error: err.message });
+  }
+}
+
+async function handleSavePendingSession(data, sendResponse) {
+  try {
+    await chrome.storage.session.set({ pendingSession: data });
+    sendResponse({ ok: true });
+  } catch (err) {
+    sendResponse({ error: err.message });
+  }
+}
+
 async function saveSession(session) {
   await chrome.storage.session.set({ guideSession: session.toJSON() });
 }
@@ -104,6 +133,35 @@ async function loadSession() {
 // ページ遷移検知
 chrome.webNavigation.onCompleted.addListener(async (details) => {
   if (details.frameId !== 0) return; // メインフレームのみ
+
+  // pendingSession チェック（URLを提案してタブを遷移させた場合）
+  const pendingResult = await chrome.storage.session.get('pendingSession');
+  if (pendingResult.pendingSession) {
+    const { apiKey, question } = pendingResult.pendingSession;
+    await chrome.storage.session.remove('pendingSession');
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: details.tabId },
+        files: ['content/dom-analyzer.js', 'content/overlay.js', 'content/content.js']
+      });
+    } catch { /* すでに注入済みの場合は無視 */ }
+    try {
+      const domResponse = await chrome.tabs.sendMessage(details.tabId, { action: 'analyze' });
+      if (!domResponse.error) {
+        const session = new GuideSession(question);
+        await saveSession(session);
+        const result = await callGeminiFirstStep(apiKey, question, domResponse.data);
+        const { done, step, summary } = result;
+        if (done) {
+          await chrome.tabs.sendMessage(details.tabId, { action: 'showCompleted', summary });
+        } else {
+          await chrome.tabs.sendMessage(details.tabId, { action: 'showSingleStep', step, stepNumber: 1 });
+        }
+      }
+    } catch { /* ignore */ }
+    return;
+  }
+
   const session = await loadSession();
   if (!session || session.status !== 'active') return;
 

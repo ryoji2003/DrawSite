@@ -49,11 +49,31 @@
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (!tab) throw new Error('アクティブなタブが見つかりません');
 
+      // 既存のガイドとセッションをクリア
+      try {
+        await chrome.tabs.sendMessage(tab.id, { action: 'clearGuide' });
+      } catch { /* 未注入の場合は無視 */ }
+      await chrome.runtime.sendMessage({ action: 'endSession' });
+
       // Check if the tab URL allows content script injection
       const url = tab.url || '';
       if (!url || url.startsWith('chrome://') || url.startsWith('chrome-extension://') ||
           url.startsWith('edge://') || url.startsWith('about:') || url.startsWith('data:')) {
-        throw new Error('このページでは使用できません。通常のWebページ（http/https）で使用してください。');
+        // AIにURLを提案させて遷移する
+        const urlResponse = await chrome.runtime.sendMessage({
+          action: 'suggestURL',
+          data: { apiKey: geminiApiKey, question }
+        });
+        if (urlResponse.error) throw new Error(urlResponse.error);
+        const suggestedUrl = urlResponse.data.url;
+        await chrome.tabs.update(tab.id, { url: suggestedUrl });
+        await chrome.runtime.sendMessage({
+          action: 'savePendingSession',
+          data: { apiKey: geminiApiKey, question }
+        });
+        showSuccess();
+        setTimeout(() => window.close(), 1000);
+        return;
       }
 
       // Get DOM info from content script

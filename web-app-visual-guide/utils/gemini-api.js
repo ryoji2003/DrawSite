@@ -44,6 +44,39 @@ async function callGeminiNextStep(apiKey, context, domInfo) {
   }
 }
 
+/**
+ * Calls Gemini API to suggest a URL for a user's goal
+ * @param {string} apiKey
+ * @param {string} question
+ * @returns {Promise<string>} URL starting with https://
+ */
+async function callGeminiSuggestURL(apiKey, question) {
+  const prompt = `ユーザーの目的から、最初に訪問すべきWebページのURLを1つ返してください。
+必ずhttps://で始まるURLのみを返し、それ以外のテキストは含めないでください。
+ユーザーの目的: ${question}`;
+
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent?key=${apiKey}`;
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 256 }
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`APIエラー (${response.status})`);
+  }
+
+  const data = await response.json();
+  const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+  if (!rawText || !rawText.startsWith('https://')) {
+    throw new Error('URLの取得に失敗しました');
+  }
+  return rawText;
+}
+
 function _buildAgentPrompt(goal, completedSteps, domInfo) {
   const domInfoStr = JSON.stringify(domInfo, null, 0);
   const truncatedDomInfo = domInfoStr.length > 20000
